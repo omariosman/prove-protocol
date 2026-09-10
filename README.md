@@ -5,8 +5,6 @@ A requester posts a task + reward → an agent executes it on-chain → a Chainl
 Confidential Workflow checks the result against The Graph → reward is released and the
 agent's trust score is updated on its ENSv2 identity.
 
-**ETH Online 2026 hackathon PoC.** Network: Ethereum Sepolia.
-
 ## Structure
 | Package | What |
 |---|---|
@@ -23,5 +21,3 @@ cp .env.example .env      # fill in the three values
 forge build
 forge test
 ```
-
-See `PROVE-hackathon-plan.md` for the full plan.
