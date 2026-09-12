@@ -102,7 +102,11 @@ Monorepo, independent packages:
     - No app-level changes in this task — deployment + wiring + a manual demo transaction sequence only (documented as exact `cast` commands, not a new script, since each step is a single simple call).
 - `cre-workflow/` — TypeScript CRE Confidential Workflow (Task 2.2, issue [#12](https://github.com/omariosman/prove-protocol/issues/12)) — **done**. `verify-task/workflow.ts` is a real `handlerInTee` workflow verifying PROVE tasks; see "Chainlink CRE integration notes" below for the full writeup. Real proof: `cre workflow simulate` run against the actual Task 1.5 `ResultSubmitted` event (tx `0xcf1fe430...`), output captured in `cre-workflow/simulation-output.log`. 8 passing unit tests for the pure verification logic (`bun test`).
 - `agent/` — Node.js/ethers executor script (Task 2.3)
-- `frontend/` — React + wagmi + viem + ensjs (Task 3.1)
+- `frontend/` — Next.js 14 dashboard (Task 3.1, issue [#14](https://github.com/omariosman/prove-protocol/issues/14)) — **done**. One scrollable page (not the plan's original 4-page sketch — one agent exists so far, and a single page reads clearer on camera for the demo): Create Task form → live-polling Task Feed (5s) → Agent Profile card showing trust score from `AgentRegistry` and the live ENS resolver **side by side**. Reads the real Task 1.5 Sepolia contracts, no mocks, no backend. Notes:
+  - Next.js pinned to 14.2.35 (latest stable 14.x — only canaries exist beyond it) per explicit request; some npm-audit CVEs in that line are only fixed in 15+, accepted as low-risk for a short-lived demo (see `frontend/README.md`).
+  - wagmi v2 + viem; wallet connect is a minimal custom button using `wagmi/connectors/injected` directly (**not** the `wagmi/connectors` barrel import — that pulls in Coinbase/MetaMask-SDK/Safe connectors and fails to build without their optional peer deps installed) — no RainbowKit, no WalletConnect Cloud account needed.
+  - **Real bug caught by actually running it in a browser** (not just `next build`): `TaskRegistry.reward` is zeroed by the contract once a task is `Paid`/`Failed`, so `getTask()` showed "0 ETH reward" for the one finished task. Fixed by reading the original amount from the `TaskCreated` event log (`lib/contracts.ts`'s `taskCreatedEvent`, queried from `TASK_REGISTRY_DEPLOY_BLOCK`) instead of trusting the current `reward` field for settled tasks.
+  - Verified via Playwright against a live `npm run dev` instance (not just a build check): task #1 renders with status `Paid`, `0.001 ETH reward`, and the trust-score card shows `100%` from both `AgentRegistry` and the ENS resolver, no console errors.
 - `subgraph/` — The Graph, **deprioritized to a stretch goal** (see scope decision above) — not created yet
 
 ## ENSv2 integration notes
@@ -164,8 +168,15 @@ cre workflow simulate verify-task --target staging-settings \
   --evm-tx-hash <tx-with-a-ResultSubmitted-log> --evm-event-index 0
 ```
 
+**frontend/** (run from `frontend/`):
+```bash
+npm install
+npm run dev     # http://localhost:3000 — read-only sections work without a wallet
+npm run build   # production build + typecheck + lint
+```
+
 Other packages: standard `npm install` + package `scripts` once they exist.
 
 ## Priority Order (if short on time)
 
-**Updated 2026-09-12.** ~~TaskRegistry + VerificationOracle~~ → ~~AgentRegistry/ENSv2~~ → ~~CRE workflow~~ → **agent script (current focus)** → frontend → subgraph (stretch, only if time remains). Always reserve time for the demo video — required for the Chainlink + ENS prize tracks.
+**Updated 2026-09-12.** ~~TaskRegistry + VerificationOracle~~ → ~~AgentRegistry/ENSv2~~ → ~~CRE workflow~~ → ~~frontend~~ → **agent script (current focus)** → subgraph (stretch, only if time remains). Always reserve time for the demo video — required for the Chainlink + ENS prize tracks.
