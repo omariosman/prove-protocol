@@ -101,7 +101,8 @@ Monorepo, independent packages:
     - Full real task lifecycle (task #1): requester (deployer) posted a 0.001 ETH task asking the agent to transfer 0.0002 ETH back to the requester; the agent actually performed that transfer (`0x51072cbc...`) and submitted its real tx hash as `resultHash`; the oracle then posted `passed=true` in one transaction (`0x5b801405...`) that atomically released the reward, updated `AgentRegistry`'s trust score, and wrote both ENS text records. All independently re-verified afterward with fresh `cast call`s (agent balance +0.001 ETH, task status `Paid`, `trustScore` = 1e18, resolver `text(...)` = `"100"`/`"1"`) — not just trusted from transaction logs.
     - No app-level changes in this task — deployment + wiring + a manual demo transaction sequence only (documented as exact `cast` commands, not a new script, since each step is a single simple call).
 - `cre-workflow/` — TypeScript CRE Confidential Workflow (Task 2.2, issue [#12](https://github.com/omariosman/prove-protocol/issues/12)) — **done**. `verify-task/workflow.ts` is a real `handlerInTee` workflow verifying PROVE tasks; see "Chainlink CRE integration notes" below for the full writeup. Real proof: `cre workflow simulate` run against the actual Task 1.5 `ResultSubmitted` event (tx `0xcf1fe430...`), output captured in `cre-workflow/simulation-output.log`. 8 passing unit tests for the pure verification logic (`bun test`).
-- `agent/` — Node.js/ethers executor script (Task 2.3)
+- `agent/` — agent + oracle watcher (Task 2.3, issue [#16](https://github.com/omariosman/prove-protocol/issues/16)) — **done**. Makes the demo fully automatic: `agent.js` runs two 5s polling loops in one process — an agent loop (watches `TaskCreated` for `agent1.prove.eth`, executes the described transfer, calls `submitResult`) and an oracle loop (watches `ResultSubmitted`, runs the same `verifyTransferSpec` comparison as `cre-workflow/verify-task/workflow.ts`, calls `postVerification`). This is the "Option 1" settlement path from #12 (plain trusted script, not a live CRE Forwarder integration), now continuous instead of one-off manual `cast` commands. Uses viem (not ethers, despite the plan's original wording — consistency with `cre-workflow/`/`frontend/`, one less library). Polling, not `eth_subscribe`, so it works with a plain public HTTPS RPC. In-memory state only, starts from the current block at launch (doesn't backfill).
+  - **Verified live, end-to-end, zero manual intervention**: started the watcher, created task #3 the same way the frontend does (`cast send ... createTask`), and it autonomously executed the transfer, submitted the result, verified it, and posted `postVerification` — confirmed independently after the fact: task #3 status `Paid`, `AgentRegistry.getAgent` shows `totalTasks=3, passedTasks=3, failedTasks=0`.
 - `frontend/` — Next.js 14 dashboard (Task 3.1, issue [#14](https://github.com/omariosman/prove-protocol/issues/14)) — **done**. One scrollable page (not the plan's original 4-page sketch — one agent exists so far, and a single page reads clearer on camera for the demo): Create Task form → live-polling Task Feed (5s) → Agent Profile card showing trust score from `AgentRegistry` and the live ENS resolver **side by side**. Reads the real Task 1.5 Sepolia contracts, no mocks, no backend. Notes:
   - Next.js pinned to 14.2.35 (latest stable 14.x — only canaries exist beyond it) per explicit request; some npm-audit CVEs in that line are only fixed in 15+, accepted as low-risk for a short-lived demo (see `frontend/README.md`).
   - wagmi v2 + viem; wallet connect is a minimal custom button using `wagmi/connectors/injected` directly (**not** the `wagmi/connectors` barrel import — that pulls in Coinbase/MetaMask-SDK/Safe connectors and fails to build without their optional peer deps installed) — no RainbowKit, no WalletConnect Cloud account needed.
@@ -175,8 +176,14 @@ npm run dev     # http://localhost:3000 — read-only sections work without a wa
 npm run build   # production build + typecheck + lint
 ```
 
+**agent/** (run from `agent/`, needs `.env` — see `.env.example`):
+```bash
+npm install
+npm start   # leave running; create a task in the frontend and it settles automatically
+```
+
 Other packages: standard `npm install` + package `scripts` once they exist.
 
 ## Priority Order (if short on time)
 
-**Updated 2026-09-12.** ~~TaskRegistry + VerificationOracle~~ → ~~AgentRegistry/ENSv2~~ → ~~CRE workflow~~ → ~~frontend~~ → **agent script (current focus)** → subgraph (stretch, only if time remains). Always reserve time for the demo video — required for the Chainlink + ENS prize tracks.
+**Updated 2026-09-12.** ~~TaskRegistry + VerificationOracle~~ → ~~AgentRegistry/ENSv2~~ → ~~CRE workflow~~ → ~~frontend~~ → ~~agent script~~ → **demo video (current focus)** → subgraph (stretch, only if time remains). The core loop is fully automatic end-to-end now — create a task in the frontend with `agent/agent.js` running and it settles to `Paid` with no manual steps.
