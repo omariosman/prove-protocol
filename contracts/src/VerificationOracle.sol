@@ -7,18 +7,14 @@ import {TaskRegistry} from "./TaskRegistry.sol";
 /// @title VerificationOracle
 /// @notice Receives the pass/fail attestation for a task and settles it on
 ///         TaskRegistry. In the full design the caller is the Chainlink CRE DON,
-///         which compares the task spec against The Graph subgraph inside a TEE;
-///         for the PoC (and as the plan's documented fallback) it's a single
-///         trusted address that can be a simulated oracle script.
-/// @dev Hackathon proof-of-concept. AgentRegistry (Task 1.4) doesn't exist yet, so
-///      the trust-score update is stubbed out until then.
+///         which compares the task spec against The Graph subgraph inside a TEE
 contract VerificationOracle is Ownable {
     TaskRegistry public immutable taskRegistry;
 
     /// @notice Address authorized to call {postVerification} (the CRE DON).
     address public creDON;
 
-    /// @notice Set once AgentRegistry (Task 1.4) is deployed. address(0) until then.
+    /// @notice AgentRegistry to update agents scores
     address public agentRegistry;
 
     event VerificationPosted(uint256 indexed taskId, bool passed, bytes attestation);
@@ -44,9 +40,8 @@ contract VerificationOracle is Ownable {
     /// @notice Post a verification result for a task. Settles the reward via
     ///         TaskRegistry.completeTask, which also guards against re-verifying a
     ///         task that isn't in the Executed state.
-    /// @param attestation Opaque evidence blob from the CRE workflow (e.g. a hash
-    ///        of the subgraph data it compared against). Not validated on-chain in
-    ///        the PoC — stored only via the emitted event for the demo/subgraph.
+    /// @param attestation Opaque evidence blob from the CRE workflow (e.g: a hash
+    ///        of the subgraph data it compared against).
     function postVerification(uint256 taskId, bool passed, bytes calldata attestation) external {
         require(msg.sender == creDON, "only CRE DON");
 
