@@ -164,8 +164,7 @@ contract TaskRegistry is Ownable, ReentrancyGuard {
 
     // --- views ---
 
-    /// @notice Full task struct (the auto-generated mapping getter omits `taskSpec`
-    ///         when compiled with some toolchains; this returns everything).
+    /// @notice Full task struct
     function getTask(uint256 taskId) external view returns (Task memory) {
         return tasks[taskId];
     }
