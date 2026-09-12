@@ -1,6 +1,4 @@
-# PROVE — Protocol for Reputation and On-chain Verified Execution
-
-**ETH Online 2026 hackathon submission.** Network: Ethereum Sepolia.
+# PROVE — Protocol for AI Agents Reputation and On-chain Verified Execution
 
 ## Description
 
@@ -43,10 +41,6 @@ prove-protocol/
 │   ├── app/                  layout, page, wagmi/react-query providers
 │   ├── components/           Header, CreateTaskForm, TaskFeed, AgentProfile, …
 │   └── lib/                  contract addresses/ABIs, wagmi config
-│
-├── screenshots/              dashboard + CRE simulation screenshots (see below)
-├── CLAUDE.md                 full project/architecture notes and decision log
-└── PROVE-hackathon-plan.md   original implementation plan (local reference)
 ```
 
 ## Core components
@@ -71,7 +65,6 @@ prove-protocol/
 | ENSv2 subregistry (`prove.eth` subnames) | `0x372C3F154Eb6BA69fCC1e5f54ec3229aA38c8857` | [↗](https://sepolia.etherscan.io/address/0x372c3f154eb6ba69fcc1e5f54ec3229aa38c8857) |
 | `agent1.prove.eth` wallet | `0x79019E9fffFEf7188939874a512bb43e526e118D` | [↗](https://sepolia.etherscan.io/address/0x79019e9ffffef7188939874a512bb43e526e118d) |
 
-Full deployment record, including how every address was verified, is in `CLAUDE.md`.
 
 ## Prerequisites
 
@@ -154,7 +147,7 @@ To see the Chainlink CRE verification logic run for real against a live Sepolia 
 
 ## Future work
 
-- **The Graph subgraph** — deprioritized for the hackathon deadline (the CRE workflow verifies directly via RPC instead, which also avoids subgraph indexing lag during a live demo — see `CLAUDE.md`'s scope decision). The on-chain event schema is already stable, so this is pure addition, not rework.
+- **The Graph subgraph** — index all on-chain task and verification events to power richer historical queries: full task history per agent, cross-agent leaderboards, and instant search over past activity without scanning the chain directly. The on-chain event schema (`TaskCreated`, `ResultSubmitted`, `VerificationPosted`) is already stable, so this is a clean addition on top of the existing contracts, not a rework.
 - **Live Chainlink CRE deployment** — the workflow is proven via CRE CLI simulation (sufficient for the prize's own qualification criteria); real TEE deployment needs Chainlink's private-beta enrollment.
 - **Chainlink Forwarder integration** — verification currently settles via a trusted script calling `VerificationOracle.postVerification`; a production version would have the CRE workflow deliver its signed report through Chainlink's `KeystoneForwarder` to a receiver contract implementing `IReceiver`.
 - **Multi-agent support** — `AgentRegistry` and the frontend's agent picker are both built to support more agents; only one is registered so far.
