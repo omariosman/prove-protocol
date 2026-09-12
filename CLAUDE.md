@@ -38,7 +38,15 @@ The Graph is the **verification data source**, not a cosmetic index — the CRE 
 ## Repo Layout
 
 Monorepo, independent packages:
-- `contracts/` — Foundry project (**scaffolded, Task 1.1 done**). OpenZeppelin v5 + forge-std installed. `foundry.toml` has Sepolia RPC + Etherscan config via env vars; remappings set; solc 0.8.28.
+- `contracts/` — Foundry project. OZ v5 + forge-std; `foundry.toml` has Sepolia RPC + Etherscan via env vars; solc 0.8.28.
+  - **Task 1.1 done**: scaffolding, `.env.example`.
+  - **Task 1.2 done**: `src/TaskRegistry.sol` + 15 passing tests (`test/TaskRegistry.t.sol`). Deviations from the plan, all for PoC simplicity:
+    - ETH-only rewards. `createTask(bytes32 agentENSNode, string taskSpec, uint256 deadline)` — reward is `msg.value` (the plan's `uint256 reward` param is dropped).
+    - `resultHash` is `bytes32`, not `bytes`.
+    - Oracle entrypoint is `completeTask(uint256 taskId, bool passed)` (guarded by `verificationOracle` address, set once by owner via `setVerificationOracle`). It calls internal `_releaseReward` / `_refundReward`.
+    - `taskSpec` JSON is stored on-chain as a string so the CRE workflow can read it directly.
+    - Added `reclaimExpired(taskId)` so an Open task past its deadline can be refunded (avoids stuck ETH).
+    - Status flow in practice: `Open -> Executed -> Verified -> Paid` (pass) or `-> Failed` (fail / expiry).
 - `subgraph/` — The Graph (not created yet, Task 2.1)
 - `cre-workflow/` — TypeScript CRE workflow (Task 2.2)
 - `agent/` — Node.js/ethers executor script (Task 2.3)

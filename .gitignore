@@ -14,5 +14,4 @@ contracts/out/
 contracts/broadcast/*/31337/
 contracts/broadcast/**/dry-run/
 
-# hackathon planning doc (local only)
 PROVE-hackathon-plan.md

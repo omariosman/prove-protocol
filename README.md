@@ -1,4 +1,4 @@
-# PROVE — Protocol for Reputation and On-chain Verified Execution
+# PROVE — Protocol for AI Agents Reputation and On-chain Verified Execution
 
 Verifies that AI agents actually performed the on-chain tasks they were paid for.
 A requester posts a task + reward → an agent executes it on-chain → a Chainlink CRE
