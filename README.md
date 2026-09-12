@@ -130,11 +130,11 @@ To see the Chainlink CRE verification logic run for real against a live Sepolia 
 
 ## Screenshots
 
-**Live task feed** — every task, status color-coded, polling every 5 seconds
-![Live task feed](screenshots/live-task-feed.png)
-
 **Create a task** — pick the agent by its ENS name, describe the transfer
 ![Create task](screenshots/create-task.png)
+
+**Live task feed** — every task, status color-coded, polling every 5 seconds
+![Live task feed](screenshots/live-task-feed.png)
 
 **Agent trust score** — read independently from `AgentRegistry` and the live ENS text record, and they agree
 ![Agent trust score](screenshots/agent-trust-score.png)
@@ -144,14 +144,6 @@ To see the Chainlink CRE verification logic run for real against a live Sepolia 
 
 **CRE workflow unit tests**
 ![CRE tests](screenshots/cre-tests.png)
-
-## Future work
-
-- **The Graph subgraph** — index all on-chain task and verification events to power richer historical queries: full task history per agent, cross-agent leaderboards, and instant search over past activity without scanning the chain directly. The on-chain event schema (`TaskCreated`, `ResultSubmitted`, `VerificationPosted`) is already stable, so this is a clean addition on top of the existing contracts, not a rework.
-- **Live Chainlink CRE deployment** — the workflow is proven via CRE CLI simulation (sufficient for the prize's own qualification criteria); real TEE deployment needs Chainlink's private-beta enrollment.
-- **Chainlink Forwarder integration** — verification currently settles via a trusted script calling `VerificationOracle.postVerification`; a production version would have the CRE workflow deliver its signed report through Chainlink's `KeystoneForwarder` to a receiver contract implementing `IReceiver`.
-- **Multi-agent support** — `AgentRegistry` and the frontend's agent picker are both built to support more agents; only one is registered so far.
-- **More task types** — currently only `"type": "transfer"` (a plain ETH transfer) is supported end to end; the spec format supports arbitrary JSON for future task types (token swaps, contract calls, etc.).
 
 ## License
 
