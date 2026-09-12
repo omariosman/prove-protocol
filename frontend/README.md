@@ -1,8 +1,6 @@
 # PROVE — Frontend
 
-One-page Next.js 14 dashboard demonstrating PROVE's task lifecycle end to end: create a task, watch it get executed/verified/paid live, and see the agent's trust score agree between `AgentRegistry` and its live ENS text record. Reads the real deployed Sepolia contracts from Task 1.5 — no mocks, no backend, no database.
-
-See issue [#14](https://github.com/omariosman/prove-protocol/issues/14) for the design plan and `CLAUDE.md` for the full project context.
+One-page Next.js 14 dashboard demonstrating PROVE's task lifecycle end to end: create a task, watch it get executed/verified/paid live, and see the agent's trust score agree between `AgentRegistry` and its live ENS text record. Reads the real deployed Sepolia contracts — no mocks, no backend, no database.
 
 ## Stack
 

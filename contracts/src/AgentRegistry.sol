@@ -10,7 +10,7 @@ import {IENSTextResolver} from "./IENSTextResolver.sol";
 ///         referenced by `ensNode`, the real ENSv2 namehash of `agent<N>.prove.eth`
 ///         (see issue #4 for how that subname gets minted). This contract is the
 ///         source of truth for trust score regardless of ENS: if `resolver` is unset,
-///         it just doesn't mirror to ENS - see issue #5 / CLAUDE.md.
+///         it just doesn't mirror to ENS 
 contract AgentRegistry is Ownable {
     using Strings for uint256;
 
@@ -56,7 +56,7 @@ contract AgentRegistry is Ownable {
 
     /// @notice Point at a real ENSv2 resolver to start mirroring trust scores there.
     ///         This contract must already hold ROLE_SET_TEXT on the resolver's
-    ///         ROOT_RESOURCE (granted externally - see issue #5 / CLAUDE.md).
+    ///         ROOT_RESOURCE (granted externally)
     function setResolver(address _resolver) external onlyOwner {
         resolver = _resolver;
         emit ResolverUpdated(_resolver);

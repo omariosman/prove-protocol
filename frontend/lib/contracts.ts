@@ -1,12 +1,10 @@
-// Real, deployed, Etherscan-verified Sepolia contracts from Task 1.5 / #4-#5.
-// See CLAUDE.md for the full deployment record.
-
+// Real, deployed, Etherscan-verified Sepolia contracts
 export const TASK_REGISTRY_ADDRESS = '0x97b2702a20375Ff7E0Db05460e512545c47BbEB1' as const
 export const VERIFICATION_ORACLE_ADDRESS = '0x43669Df6dfaFcd7047b5299737E2E9C5A6d8AF7B' as const
 export const AGENT_REGISTRY_ADDRESS = '0xbDbc1f2b9eB71af7eeCb80d37F7e7ceE404F8119' as const
 export const ENS_RESOLVER_ADDRESS = '0x7add7bD84C9DB30800711a6020bA328Ef73b9A35' as const
 
-// The only agent registered so far (Task 1.5). agent1.prove.eth
+// The agent registered. agent1.prove.eth
 export const AGENT1_ENS_NODE = '0xb82c859bfe39f5ecf8a57550e6f4bdd84fc3b4ed1a62edb47fbb4a477c472657' as const
 export const AGENT1_ENS_NAME = 'agent1.prove.eth'
 export const AGENT1_ADDRESS = '0x79019E9fffFEf7188939874a512bb43e526e118D' as const
@@ -18,7 +16,7 @@ export const AGENTS = [{ ensNode: AGENT1_ENS_NODE, ensName: AGENT1_ENS_NAME }] a
 
 export const SEPOLIA_RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com'
 
-// TaskRegistry was deployed just before this block (Task 1.5) - used as a safe
+// TaskRegistry was deployed just before this block - used as a safe
 // `fromBlock` floor so event log queries don't scan the whole chain.
 export const TASK_REGISTRY_DEPLOY_BLOCK = BigInt(11690350)
 

@@ -37,7 +37,7 @@ const TASK_REGISTRY_ABI = parseAbi([
 	'function getTask(uint256 taskId) external view returns ((address requester, address agent, bytes32 agentENSNode, bytes32 specHash, string taskSpec, uint256 reward, uint256 deadline, uint8 status, bytes32 resultHash))',
 ])
 
-// keccak256("ResultSubmitted(uint256,address,bytes32)") - see CLAUDE.md.
+// keccak256("ResultSubmitted(uint256,address,bytes32)") 
 const RESULT_SUBMITTED_TOPIC0: Hex = '0x9bb2295443670abcb0f3088e52668e961eca6816b19f155f2fca528c4b2fe345'
 
 type TransferSpec = {
@@ -80,9 +80,8 @@ export const verifyTransferSpec = (
 
 // ─── Confidential JSON-RPC ───────────────────────────────────
 // evmClient's own chain-read methods only accept a plain Runtime - chain
-// reads always execute on Workflow DON nodes, never inside the enclave (see
-// CLAUDE.md "ENSv2/CRE integration notes" and the confidential-workflows
-// skill reference). To keep the agent's raw transaction data confidential
+// reads always execute on Workflow DON nodes, never inside the enclave.
+// To keep the agent's raw transaction data confidential
 // until a verdict is reached, fetch it via a plain JSON-RPC POST through
 // HTTPClient's TeeRuntime overload, which does execute from inside the
 // enclave - request and response payloads stay confidential from node

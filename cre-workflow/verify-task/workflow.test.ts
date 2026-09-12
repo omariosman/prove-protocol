@@ -9,7 +9,7 @@ const SPEC = {
 	deadline: 1789237656,
 }
 
-// Real values from the Task 1.5 Sepolia demo (tx 0x51072cbc...) - the actual
+// Real values from Sepolia demo (tx 0x51072cbc...) - the actual
 // transfer PROVE's verification is checking against.
 const REAL_TX = { to: '0x27cb1F440476D2bbC1F0e4bAa05046bF20ba4e34', value: '200000000000000' } // 0.0002 ETH in wei
 const REAL_RECEIPT_STATUS = '0x1'

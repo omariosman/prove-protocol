@@ -74,7 +74,6 @@ interface IMockERC20 {
 }
 
 contract RegisterAgentENS is Script {
-    // Verified live on Sepolia 2026-09-12 - see CLAUDE.md "ENSv2 integration notes".
     address constant VERIFIABLE_FACTORY = 0x118Bc31A50d559F7015a8Da26d54B3b030CdB70F;
     address constant USER_REGISTRY_IMPL = 0x840Fa461059862Ea466A711E8C98c8dE732061C0;
     address constant PERMISSIONED_RESOLVER_IMPL = 0x7E4B2d59938930168024201752EE5503df402303;

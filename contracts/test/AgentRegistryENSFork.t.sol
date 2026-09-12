@@ -10,7 +10,6 @@ import {IENSTextResolver} from "../src/IENSTextResolver.sol";
 ///         `prove.eth` / `agent1.prove.eth` state from issue #4. Not meaningfully
 ///         testable against mocks (see issue #5). Requires SEPOLIA_RPC_URL in .env.
 contract AgentRegistryENSForkTest is Test {
-    // Real, deployed 2026-09-12 - see CLAUDE.md "ENSv2 integration notes".
     address constant RESOLVER = 0x7add7bD84C9DB30800711a6020bA328Ef73b9A35;
     address constant REAL_DEPLOYER = 0x27cb1F440476D2bbC1F0e4bAa05046bF20ba4e34;
     address constant AGENT1_OWNER = 0x9E61c0fD51fD418B1dA5976D552A08269F955C94;

@@ -7,10 +7,6 @@
 //                  (same comparison logic as cre-workflow/verify-task/workflow.ts's
 //                  verifyTransferSpec), calls VerificationOracle.postVerification.
 //
-// This is the "Option 1" settlement path from issue #12: postVerification is
-// called by a plain trusted script, not a live Chainlink CRE Forwarder
-// integration - see CLAUDE.md. Polling (not eth_subscribe) so it works with
-// a plain public HTTPS RPC, no WebSocket endpoint required.
 
 import 'dotenv/config'
 import { createPublicClient, createWalletClient, http, parseEther, keccak256, stringToHex } from 'viem'
@@ -28,7 +24,7 @@ if (!AGENT_PRIVATE_KEY || !ORACLE_PRIVATE_KEY) {
 	process.exit(1)
 }
 
-// Real, deployed, Etherscan-verified Sepolia contracts from Task 1.5. See CLAUDE.md.
+// Real, deployed, Etherscan-verified Sepolia contracts
 const TASK_REGISTRY_ADDRESS = '0x97b2702a20375Ff7E0Db05460e512545c47BbEB1'
 const VERIFICATION_ORACLE_ADDRESS = '0x43669Df6dfaFcd7047b5299737E2E9C5A6d8AF7B'
 const AGENT1_ENS_NODE = '0xb82c859bfe39f5ecf8a57550e6f4bdd84fc3b4ed1a62edb47fbb4a477c472657'
