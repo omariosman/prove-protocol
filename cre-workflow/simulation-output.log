@@ -1,0 +1,37 @@
+Initializing...
+Loading settings...
+! Using default private key for chain write simulation. To use your own key, set CRE_ETH_PRIVATE_KEY in your .env file or system environment.
+Checking RPC connectivity...
+Compiling workflow...
+✓ Workflow compiled
+✓ Simulation limits enabled
+  HTTP: req=120kb resp=250kb timeout=10s | ConfHTTP: req=125kb resp=500kb timeout=1m30s | Consensus obs=25kb | ChainWrite evm_report=50kb evm_gas=10000000 solana_report=265b solana_cu=300000 | WASM binary=100mb compressed=20mb
+  Binary hash: 1792668c28af49d100fefea7c40f573c7c32fa02d53a4ad02093ce2ee24a747e
+  Config hash: eea2905901aae32184146e6ccad93c676ad7ada127488e075f990acb7d6853e1
+Fetching transaction receipt for 0xcf1fe430c68e04be346b13f12ded69404fb750d3550c0bb220ce91a9f740da32...
+2026-09-12T20:55:41Z [SIMULATION] Simulator Initialized
+
+2026-09-12T20:55:41Z [SIMULATION] Running trigger trigger=evm:ChainSelector:16015286601757825753@1.0.0
+╭────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ Trigger requested TEE Execution your trigger will run in one of the following Tees:                │
+│     - AWS Nitro in us-west-2                                                                       │
+│ The simulator is not a real TEE, and is meant to debug.                                            │
+│ Do not use it for sensitive information.                                                           │
+│ During real execution, user logs for this trigger will not be visible, and will not leave the TEE. │
+│ They are presented in the simulator for debugging only.                                            │
+│                                                                                                    │
+╰────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+2026-09-12T20:55:41Z [USER LOG] Verification complete for task 1: passed=true (transfer matches spec)
+
+✓ Workflow Simulation Result:
+"Task 1: PASSED (transfer matches spec)"
+
+2026-09-12T20:55:41Z [SIMULATION] Execution finished signal received
+2026-09-12T20:55:41Z [SIMULATION] Skipping WorkflowEngineV2
+
+╭──────────────────────────────────────────────────────╮
+│ Simulation complete! Ready to deploy your workflow?  │
+│                                                      │
+│ Run cre account access to request deployment access. │
+╰──────────────────────────────────────────────────────╯
