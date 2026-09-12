@@ -72,7 +72,17 @@ Monorepo, independent packages:
     - `trustScore` returns a wad (1e18 = 100%), 0 if the agent has no tasks yet.
     - `VerificationOracle.postVerification` now requires `agentRegistry != address(0)` and calls `IAgentRegistry(agentRegistry).recordResult(agentENSNode, passed)` using the `agentENSNode` stored on the task (`TaskRegistry.getTask(taskId)`) — the caller of `createTask` must pass the exact `ensNode` an agent was registered with.
     - `script/Deploy.s.sol` deploys `AgentRegistry` and wires `oracle.setAgentRegistry` + `agentRegistry.setScoreUpdater`. Per-agent ENS registration is a separate script (`script/RegisterAgentENS.s.sol`, issue #4), not part of base deploy.
-  - **Task 1.4b/1.4c not started** (issues [#4](https://github.com/omariosman/prove-protocol/issues/4)/[#5](https://github.com/omariosman/prove-protocol/issues/5)): real ENSv2 registration of `prove.eth` + agent subnames on Sepolia, then wiring `AgentRegistry` to write real text records. See "ENSv2 integration notes" below before starting.
+  - **Task 1.4b done** (branch `task-1.4b-ensv2-registration-spike`, issue [#4](https://github.com/omariosman/prove-protocol/issues/4), epic [#6](https://github.com/omariosman/prove-protocol/issues/6)): `prove.eth` and `agent1.prove.eth` are **really registered on ENSv2 Sepolia** — this isn't simulated. `script/RegisterAgentENS.s.sol`, run in 3 phases (`deployInfra` / `mintApproveAndCommit` / `registerProveAndAgent`, the middle two separated by the real 60s `MIN_COMMITMENT_AGE` wait). Everything below was independently re-verified with fresh `cast call`s after broadcasting, not just trusted from the script's own log output:
+    - Our own subregistry (a `UserRegistry` proxy clone via `VerifiableFactory`, deployer holds `ROLE_REGISTRAR` etc. on its `ROOT_RESOURCE`): `0x372C3F154Eb6BA69fCC1e5f54ec3229aA38c8857`
+    - Our own resolver (a `PermissionedResolverImpl` proxy clone, deployer holds `ROLE_SET_TEXT`/admin on its `ROOT_RESOURCE`): `0x7add7bD84C9DB30800711a6020bA328Ef73b9A35`
+    - **Why our own proxies, not the shared ENSv2 implementations**: confirmed live that the shared `PermissionedResolverImpl` already has a nonzero root-role count (someone else's admin) — EAC has no bootstrap path for an unrelated caller to gain roles on an already-initialized instance. `UserRegistry` and `PermissionedResolverImpl` are specifically designed to be cloned per-owner via `VerifiableFactory.deployProxy`, each clone's `initialize(...)` making the caller its own `ROOT_RESOURCE` admin.
+    - `prove.eth` is registered, owned by the deployer wallet (`ETHRegistrar.isAvailable("prove")` now returns `false`; confirmed via `ETH_REGISTRY.getOwner`).
+    - `agent1.prove.eth` is minted in our subregistry, owned by a throwaway address (`0x9E61c0fD51fD418B1dA5976D552A08269F955C94`, generated for this spike, not used for anything else).
+    - Text record `com.prove.trustScore` = `"0"` on `agent1.prove.eth`, written and read back via our resolver.
+    - Total cost: ~0.001 ETH gas across all 3 phases (no real funds — payment was free-minted `MockUSDC`).
+    - `script/output/ens-deployment.sepolia.json` (committed) holds the subregistry/resolver addresses for reuse in #5.
+    - `foundry.toml` gained `fs_permissions` for `./script/output` (needed for the script to read/write that file).
+  - **Task 1.4c not started** (issue [#5](https://github.com/omariosman/prove-protocol/issues/5)): wire `AgentRegistry.recordResult` to write real text records via the resolver above, and swap `registerAgent`'s placeholder `ensNode` for the real namehash. See "ENSv2 integration notes" below.
 - `subgraph/` — The Graph (not created yet, Task 2.1)
 - `cre-workflow/` — TypeScript CRE workflow (Task 2.2)
 - `agent/` — Node.js/ethers executor script (Task 2.3)
@@ -97,7 +107,10 @@ ENSv2 is beta, live on Sepolia, source at `ensdomains/contracts-v2` on GitHub (a
   | MockUSDC | `0xd3322b29a7bdee707d1684676f149bf41aa3422f` |
   | MockDAI | `0xe33a01a41ee4a68616b5278183aa88808326ed8e` |
 
-- Full step-by-step registration flow is in issue [#4](https://github.com/omariosman/prove-protocol/issues/4).
+- Full step-by-step registration flow is in issue [#4](https://github.com/omariosman/prove-protocol/issues/4). **Now executed for real** — see Task 1.4b above for the deployed addresses; `script/RegisterAgentENS.s.sol` is the reference implementation for every call below.
+- `VerifiableFactory.deployProxy(implementation, salt, initCalldata) returns (address)` (from `ensdomains/verifiable-factory`, CREATE2-deterministic given `(msg.sender, salt)`) is how you get your own `ROOT_RESOURCE`-controlled instance of a shared implementation. Used for both the subregistry (`USER_REGISTRY_IMPL` template) and the resolver (`PERMISSIONED_RESOLVER_IMPL` template).
+- `ETHRegistrar` on Sepolia: `MIN_COMMITMENT_AGE = 60s`, `MAX_COMMITMENT_AGE = 86400s`, `MIN_REGISTER_DURATION = 2419200s` (28 days) — all read live, immutable, could differ if redeployed.
+- Role constants used (`RegistryRolesLib`/`PermissionedResolverLib`): `ROLE_REGISTRAR = 1<<0`, `ROLE_RENEW = 1<<16`, `ROLE_SET_RESOLVER = 1<<24`, `ROLE_SET_TEXT = 1<<4` — each role's admin variant is `role << 128`.
 
 ## Commands
 
