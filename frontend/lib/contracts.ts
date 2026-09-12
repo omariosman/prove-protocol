@@ -11,6 +11,11 @@ export const AGENT1_ENS_NODE = '0xb82c859bfe39f5ecf8a57550e6f4bdd84fc3b4ed1a62ed
 export const AGENT1_ENS_NAME = 'agent1.prove.eth'
 export const AGENT1_ADDRESS = '0x79019E9fffFEf7188939874a512bb43e526e118D' as const
 
+// Registered agents a requester can pick from. One entry today; add more here
+// as they're registered (AgentRegistry.registerAgent + the ENS subname mint)
+// and the picker in CreateTaskForm grows with it.
+export const AGENTS = [{ ensNode: AGENT1_ENS_NODE, ensName: AGENT1_ENS_NAME }] as const
+
 export const SEPOLIA_RPC_URL = 'https://ethereum-sepolia-rpc.publicnode.com'
 
 // TaskRegistry was deployed just before this block (Task 1.5) - used as a safe

@@ -1,16 +1,19 @@
 'use client'
 
 import { useState } from 'react'
-import { parseEther } from 'viem'
+import { parseEther, type Hex } from 'viem'
 import { useAccount, useWaitForTransactionReceipt, useWriteContract } from 'wagmi'
-import { AGENT1_ENS_NAME, AGENT1_ENS_NODE, TASK_REGISTRY_ADDRESS, taskRegistryAbi } from '@/lib/contracts'
+import { AGENTS, TASK_REGISTRY_ADDRESS, taskRegistryAbi } from '@/lib/contracts'
 
 export function CreateTaskForm({ onCreated }: { onCreated?: () => void }) {
 	const { isConnected } = useAccount()
+	const [agentEnsNode, setAgentEnsNode] = useState<Hex>(AGENTS[0].ensNode)
 	const [to, setTo] = useState('')
 	const [amount, setAmount] = useState('0.0002')
 	const [reward, setReward] = useState('0.001')
 	const [minutes, setMinutes] = useState('60')
+
+	const selectedAgent = AGENTS.find((a) => a.ensNode === agentEnsNode) ?? AGENTS[0]
 
 	const { writeContract, data: hash, isPending, error, reset } = useWriteContract()
 	const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash })
@@ -30,7 +33,7 @@ export function CreateTaskForm({ onCreated }: { onCreated?: () => void }) {
 			address: TASK_REGISTRY_ADDRESS,
 			abi: taskRegistryAbi,
 			functionName: 'createTask',
-			args: [AGENT1_ENS_NODE, spec, deadline],
+			args: [agentEnsNode, spec, deadline],
 			value: parseEther(reward),
 		})
 	}
@@ -38,11 +41,32 @@ export function CreateTaskForm({ onCreated }: { onCreated?: () => void }) {
 	return (
 		<section className="rounded-xl border border-slate-800 bg-slate-900/50 p-6">
 			<h2 className="text-lg font-semibold">1. Create a task</h2>
-			<p className="mt-1 text-sm text-slate-400">
-				Ask <span className="font-mono text-slate-300">{AGENT1_ENS_NAME}</span> to transfer ETH to an address. It will execute on-chain, submit proof, and get verified.
-			</p>
+			<p className="mt-1 text-sm text-slate-400">Pick an AI agent by its ENS name, then describe the ETH transfer it should execute on-chain.</p>
 
 			<form onSubmit={submit} className="mt-4 grid gap-4 sm:grid-cols-2">
+				<label className="flex flex-col gap-1 text-sm sm:col-span-2">
+					AI agent (by ENS name)
+					<div className="flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2">
+						<span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-500/20 text-xs font-bold text-indigo-300">
+							{selectedAgent.ensName[0].toUpperCase()}
+						</span>
+						<select
+							value={agentEnsNode}
+							onChange={(e) => setAgentEnsNode(e.target.value as Hex)}
+							className="w-full bg-transparent font-mono text-sm text-slate-100 outline-none"
+						>
+							{AGENTS.map((a) => (
+								<option key={a.ensNode} value={a.ensNode} className="bg-slate-950">
+									{a.ensName}
+								</option>
+							))}
+						</select>
+						<span className="shrink-0 rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sky-300 border border-sky-500/40">
+							ENS
+						</span>
+					</div>
+				</label>
+
 				<label className="flex flex-col gap-1 text-sm sm:col-span-2">
 					Recipient address
 					<input
