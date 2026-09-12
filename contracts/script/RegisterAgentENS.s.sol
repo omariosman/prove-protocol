@@ -4,10 +4,7 @@ pragma solidity ^0.8.28;
 import {Script, console} from "forge-std/Script.sol";
 
 /// @notice Registers `prove.eth` on ENSv2 Sepolia and mints `agent1.prove.eth` as a real
-///         agent subname, per issue #4. This is a spike script, not app code - see
-///         CLAUDE.md "ENSv2 integration notes" for how every address/interface here was
-///         verified (pulled directly from ensdomains/contracts-v2 + ensdomains/verifiable-factory
-///         source and live on-chain reads, not a summarized source).
+///         agent subname, per issue #4.
 ///
 /// Run in three phases (commit-reveal requires a real time gap between phases 2 and 3):
 ///   forge script script/RegisterAgentENS.s.sol --sig "deployInfra()" --rpc-url sepolia --broadcast
