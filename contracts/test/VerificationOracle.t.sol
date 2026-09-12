@@ -4,10 +4,12 @@ pragma solidity ^0.8.28;
 import {Test} from "forge-std/Test.sol";
 import {TaskRegistry} from "../src/TaskRegistry.sol";
 import {VerificationOracle} from "../src/VerificationOracle.sol";
+import {AgentRegistry} from "../src/AgentRegistry.sol";
 
 contract VerificationOracleTest is Test {
     TaskRegistry registry;
     VerificationOracle oracle;
+    AgentRegistry agentRegistry;
 
     address owner = makeAddr("owner");
     address requester = makeAddr("requester");
@@ -22,6 +24,11 @@ contract VerificationOracleTest is Test {
         registry = new TaskRegistry();
         oracle = new VerificationOracle(address(registry), creDON);
         registry.setVerificationOracle(address(oracle));
+
+        agentRegistry = new AgentRegistry();
+        agentRegistry.setScoreUpdater(address(oracle));
+        agentRegistry.registerAgent(agent);
+        oracle.setAgentRegistry(address(agentRegistry));
         vm.stopPrank();
 
         vm.deal(requester, 10 ether);
@@ -87,6 +94,11 @@ contract VerificationOracleTest is Test {
         assertEq(agent.balance, agentBefore + 1 ether);
         TaskRegistry.Task memory t = registry.getTask(id);
         assertEq(uint256(t.status), uint256(TaskRegistry.Status.Paid));
+
+        AgentRegistry.Agent memory a = agentRegistry.getAgent(ENS_NODE);
+        assertEq(a.totalTasks, 1);
+        assertEq(a.passedTasks, 1);
+        assertEq(agentRegistry.trustScore(ENS_NODE), 1e18);
     }
 
     function test_PostVerification_FailedRefundsRequester() public {
@@ -99,6 +111,11 @@ contract VerificationOracleTest is Test {
         assertEq(requester.balance, requesterBefore + 1 ether);
         TaskRegistry.Task memory t = registry.getTask(id);
         assertEq(uint256(t.status), uint256(TaskRegistry.Status.Failed));
+
+        AgentRegistry.Agent memory a = agentRegistry.getAgent(ENS_NODE);
+        assertEq(a.totalTasks, 1);
+        assertEq(a.failedTasks, 1);
+        assertEq(agentRegistry.trustScore(ENS_NODE), 0);
     }
 
     function test_PostVerification_EmitsEvent() public {

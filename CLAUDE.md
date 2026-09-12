@@ -24,6 +24,8 @@ Repo: `omariosman/prove-protocol` (`gh` CLI installed at `~/.local/bin/gh`, auth
 5. **PR** referencing the issue (`Closes #<n>` in the PR body) so merging auto-closes it. Commit messages also mention the issue number.
 6. Merge only on explicit user go-ahead.
 
+For a task with real uncertainty (e.g. an unfamiliar external integration), split it into an **epic issue + sub-issues** instead of one issue: epic has a `- [ ] #n` checklist linking each sub-issue, each sub-issue gets its own branch/PR/merge following steps 2–6 above, sub-issues get a "Part of epic #n" comment. See Task 1.4 (epic [#6](https://github.com/omariosman/prove-protocol/issues/6): [#3](https://github.com/omariosman/prove-protocol/issues/3)/[#4](https://github.com/omariosman/prove-protocol/issues/4)/[#5](https://github.com/omariosman/prove-protocol/issues/5)) for the pattern.
+
 ## What PROVE Is
 
 End-to-end flow, and why each piece exists:
@@ -63,10 +65,39 @@ Monorepo, independent packages:
     - Calls `TaskRegistry.completeTask`, which already guards against re-verifying a task not in `Executed` state — no separate double-verification check needed.
     - `agentRegistry` address + `setAgentRegistry` are stubbed (`address(0)`) until Task 1.4; the trust-score update is a `TODO(Task 1.4)` comment, not yet wired.
     - `script/Deploy.s.sol` now deploys `TaskRegistry` + `VerificationOracle` and wires `setVerificationOracle`; `CRE_DON_ADDRESS` env var is optional (defaults to deployer). Actual Sepolia deployment still deferred until Task 1.4 lands so it's one combined deploy.
+  - **Task 1.4a done** (branch `task-1.4a-agent-registry-core`, issue [#3](https://github.com/omariosman/prove-protocol/issues/3), epic [#6](https://github.com/omariosman/prove-protocol/issues/6)): `src/AgentRegistry.sol` + `src/IAgentRegistry.sol` + 11 passing tests (`test/AgentRegistry.t.sol`), plus `VerificationOracle`'s `TODO(Task 1.4)` replaced with a real call. Notes:
+    - Agents get **sequential labels** (`agent1`, `agent2`, ...); `ensNode = keccak256(bytes("agent<N>.prove.eth"))` is a **placeholder key**, not a real ENS namehash, until #4/#5 mint the actual subname. `Agent.ensName` stores the human-readable string for when that happens.
+    - `registerAgent` is owner-only (no open registration in the PoC).
+    - `recordResult(ensNode, passed)` gated by a single `scoreUpdater` address (same pattern as `TaskRegistry.verificationOracle` / `VerificationOracle.creDON`), set to `VerificationOracle`.
+    - `trustScore` returns a wad (1e18 = 100%), 0 if the agent has no tasks yet.
+    - `VerificationOracle.postVerification` now requires `agentRegistry != address(0)` and calls `IAgentRegistry(agentRegistry).recordResult(agentENSNode, passed)` using the `agentENSNode` stored on the task (`TaskRegistry.getTask(taskId)`) — the caller of `createTask` must pass the exact `ensNode` an agent was registered with.
+    - `script/Deploy.s.sol` deploys `AgentRegistry` and wires `oracle.setAgentRegistry` + `agentRegistry.setScoreUpdater`. Per-agent ENS registration is a separate script (`script/RegisterAgentENS.s.sol`, issue #4), not part of base deploy.
+  - **Task 1.4b/1.4c not started** (issues [#4](https://github.com/omariosman/prove-protocol/issues/4)/[#5](https://github.com/omariosman/prove-protocol/issues/5)): real ENSv2 registration of `prove.eth` + agent subnames on Sepolia, then wiring `AgentRegistry` to write real text records. See "ENSv2 integration notes" below before starting.
 - `subgraph/` — The Graph (not created yet, Task 2.1)
 - `cre-workflow/` — TypeScript CRE workflow (Task 2.2)
 - `agent/` — Node.js/ethers executor script (Task 2.3)
 - `frontend/` — React + wagmi + viem + ensjs (Task 3.1)
+
+## ENSv2 integration notes (for Task 1.4b/1.4c)
+
+ENSv2 is beta, live on Sepolia, source at `ensdomains/contracts-v2` on GitHub (actively pushed to as of Sep 2026 — check for drift before relying on old notes here). **Verified 2026-09-12** by pulling deployment JSON + contract source directly via `gh api` (raw bytes, not a summarized fetch) — a prior attempt using a page-summarizing web fetch returned fabricated contract addresses. Don't trust ENSv2 addresses/interfaces from a summarized source; get them from `contracts/deployments/sepolia/*.json` or contract source in that repo, or a live on-chain read.
+
+- Registration is priced only in stablecoins (no ETH/oracle path) — on Sepolia that's `MockUSDC`/`MockDAI`, both freely mintable via `mint(address,uint256)` (no access control). No real funds needed.
+- Access control is **Enhanced Access Control (EAC)**: bitmap-packed roles scoped per-resource (`uint256 resource`, e.g. a namehash or `resource(node, part)` for a specific text-record key), not OpenZeppelin's flat `AccessControl`. Roles are granted via `grantRoles(resource, roleBitmap, account)`; `ROLE_REGISTRAR`/`ROLE_SET_TEXT`/etc. are defined in `RegistryRolesLib`/`PermissionedResolverLib`.
+- To mint a subname you need a `PermissionedRegistry` you control (deployed via `VerifiableFactory`) set as the parent name's subregistry — `prove.eth` needs one deployed before subnames can be minted under it.
+- Verified Sepolia addresses (subject to redeploys — re-verify against the source above if anything reverts unexpectedly):
+
+  | Contract | Address |
+  |---|---|
+  | ETHRegistrar | `0xa4449a0dd2b83007553d9b1d28b583a46a805a30` |
+  | RootRegistry | `0x11b5bfbe9078d826b1edbdd1cfc12f5828d9f50c` |
+  | VerifiableFactory | `0x118bc31a50d559f7015a8da26d54b3b030cdb70f` |
+  | PermissionedResolverImpl | `0x7e4b2d59938930168024201752ee5503df402303` |
+  | LabelStore | `0xb03524289c16424f71802a1794c29c7bd1b9f577` |
+  | MockUSDC | `0xd3322b29a7bdee707d1684676f149bf41aa3422f` |
+  | MockDAI | `0xe33a01a41ee4a68616b5278183aa88808326ed8e` |
+
+- Full step-by-step registration flow is in issue [#4](https://github.com/omariosman/prove-protocol/issues/4).
 
 ## Commands
 
