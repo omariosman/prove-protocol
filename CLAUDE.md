@@ -13,6 +13,17 @@ This is a **hackathon proof-of-concept** for ETH Online 2026, not production sof
 - Execute the plan one task at a time (Task 1.1, 1.2, …). After finishing each task, stop and report: what was done + exactly how the user can test it. Wait for confirmation before the next task.
 - Ask the user for anything you can't self-serve (RPC URLs, API keys, funded test wallets, deployed addresses).
 
+### Git/GitHub workflow (from Task 1.3 onward)
+
+Repo: `omariosman/prove-protocol` (`gh` CLI installed at `~/.local/bin/gh`, authenticated as `omariosman`). Tasks 1.1–1.2 went straight to `main`; everything after follows this flow:
+
+1. **Issue first** — before writing code, `gh issue create` documenting the task's scope (what plan section, what's in/out, definition of done). One issue per plan task (e.g. "Task 1.3: VerificationOracle.sol").
+2. **Branch per task** — `git checkout -b task-<n>-<slug>` off `main`, named after the issue.
+3. **Implement + test locally** — build/test on the branch. Update `CLAUDE.md`'s Repo Layout section with what was done and any deviations, same as before.
+4. **Wait for the user to test and confirm** before opening a PR — do not open the PR until they say it's good.
+5. **PR** referencing the issue (`Closes #<n>` in the PR body) so merging auto-closes it. Commit messages also mention the issue number.
+6. Merge only on explicit user go-ahead.
+
 ## What PROVE Is
 
 End-to-end flow, and why each piece exists:
@@ -47,6 +58,11 @@ Monorepo, independent packages:
     - `taskSpec` JSON is stored on-chain as a string so the CRE workflow can read it directly.
     - Added `reclaimExpired(taskId)` so an Open task past its deadline can be refunded (avoids stuck ETH).
     - Status flow in practice: `Open -> Executed -> Verified -> Paid` (pass) or `-> Failed` (fail / expiry).
+  - **Task 1.3 done** (branch `task-1.3-verification-oracle`, issue [#1](https://github.com/omariosman/prove-protocol/issues/1)): `src/VerificationOracle.sol` + 12 passing tests (`test/VerificationOracle.t.sol`). Notes:
+    - `postVerification(taskId, passed, attestation)` gated by a single `creDON` address (owner-settable) — stands in for the CRE DON per the plan's documented fallback (a trusted script instead of a real DON).
+    - Calls `TaskRegistry.completeTask`, which already guards against re-verifying a task not in `Executed` state — no separate double-verification check needed.
+    - `agentRegistry` address + `setAgentRegistry` are stubbed (`address(0)`) until Task 1.4; the trust-score update is a `TODO(Task 1.4)` comment, not yet wired.
+    - `script/Deploy.s.sol` now deploys `TaskRegistry` + `VerificationOracle` and wires `setVerificationOracle`; `CRE_DON_ADDRESS` env var is optional (defaults to deployer). Actual Sepolia deployment still deferred until Task 1.4 lands so it's one combined deploy.
 - `subgraph/` — The Graph (not created yet, Task 2.1)
 - `cre-workflow/` — TypeScript CRE workflow (Task 2.2)
 - `agent/` — Node.js/ethers executor script (Task 2.3)
