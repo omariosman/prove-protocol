@@ -16,7 +16,7 @@ contract VerificationOracleTest is Test {
     address agent = makeAddr("agent");
     address creDON = makeAddr("creDON");
 
-    bytes32 constant ENS_NODE = keccak256("agent1.prove.eth");
+    bytes32 ENS_NODE;
     string constant SPEC = '{"type":"transfer","token":"ETH","amount":"0.01","to":"0xabc"}';
 
     function setUp() public {
@@ -27,7 +27,7 @@ contract VerificationOracleTest is Test {
 
         agentRegistry = new AgentRegistry();
         agentRegistry.setScoreUpdater(address(oracle));
-        agentRegistry.registerAgent(agent);
+        (ENS_NODE,) = agentRegistry.registerAgent(agent);
         oracle.setAgentRegistry(address(agentRegistry));
         vm.stopPrank();
 

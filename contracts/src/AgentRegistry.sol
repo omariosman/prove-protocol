@@ -3,14 +3,14 @@ pragma solidity ^0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IENSTextResolver} from "./IENSTextResolver.sol";
 
 /// @title AgentRegistry
 /// @notice Tracks agent identity and trust score for the PROVE protocol. Agents are
-///         referenced by an `ensNode` key: today that's a placeholder
-///         (keccak256("agentN.prove.eth")), to be replaced by the real ENSv2 namehash
-///         once the agent subname is actually minted on Sepolia (see issues #4/#5).
-///         This contract works standalone either way - it's the source of truth for
-///         trust score regardless of whether the ENS mirror is wired up.
+///         referenced by `ensNode`, the real ENSv2 namehash of `agent<N>.prove.eth`
+///         (see issue #4 for how that subname gets minted). This contract is the
+///         source of truth for trust score regardless of ENS: if `resolver` is unset,
+///         it just doesn't mirror to ENS - see issue #5 / CLAUDE.md.
 contract AgentRegistry is Ownable {
     using Strings for uint256;
 
@@ -25,8 +25,17 @@ contract AgentRegistry is Ownable {
 
     uint256 private constant WAD = 1e18;
 
+    /// @dev Namehash of "eth", then "prove.eth" - the fixed parent for every agent
+    ///      subname. Computed once at compile time (both inputs are literals).
+    bytes32 private constant ETH_NODE = keccak256(abi.encodePacked(bytes32(0), keccak256(bytes("eth"))));
+    bytes32 private constant PROVE_NODE = keccak256(abi.encodePacked(ETH_NODE, keccak256(bytes("prove"))));
+
     /// @notice Only this address may call {recordResult} (the VerificationOracle).
     address public scoreUpdater;
+
+    /// @notice Real ENSv2 resolver holding agent text records. address(0) = ENS
+    ///         mirroring disabled (this contract's own storage is still authoritative).
+    address public resolver;
 
     uint256 public agentCount;
     mapping(bytes32 => Agent) public agents; // ensNode => Agent
@@ -34,6 +43,7 @@ contract AgentRegistry is Ownable {
     event AgentRegistered(uint256 indexed agentId, bytes32 indexed ensNode, address indexed agentAddress);
     event ResultRecorded(bytes32 indexed ensNode, bool passed, uint256 totalTasks, uint256 passedTasks);
     event ScoreUpdaterUpdated(address indexed scoreUpdater);
+    event ResolverUpdated(address indexed resolver);
 
     constructor() Ownable(msg.sender) {}
 
@@ -44,21 +54,38 @@ contract AgentRegistry is Ownable {
         emit ScoreUpdaterUpdated(_scoreUpdater);
     }
 
+    /// @notice Point at a real ENSv2 resolver to start mirroring trust scores there.
+    ///         This contract must already hold ROLE_SET_TEXT on the resolver's
+    ///         ROOT_RESOURCE (granted externally - see issue #5 / CLAUDE.md).
+    function setResolver(address _resolver) external onlyOwner {
+        resolver = _resolver;
+        emit ResolverUpdated(_resolver);
+    }
+
     // --- registration ---
 
+    /// @notice The real ENSv2 namehash of "agent<agentId>.prove.eth".
+    function agentEnsNode(uint256 agentId) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(PROVE_NODE, keccak256(bytes(string.concat("agent", agentId.toString())))));
+    }
+
     /// @notice Register a new agent under a sequential label (agent1, agent2, ...).
-    /// @dev `ensNode` is a placeholder key (keccak256 of the intended name) until the
-    ///      real ENS subname is minted - see issue #4/#5.
+    /// @dev `ensNode` is the real ENS namehash - the corresponding subname must
+    ///      already be minted under prove.eth for ENS mirroring to work (issue #4).
     function registerAgent(address agentAddress) external onlyOwner returns (bytes32 ensNode, uint256 agentId) {
         require(agentAddress != address(0), "agent required");
 
         agentId = ++agentCount;
-        string memory ensName = string.concat("agent", agentId.toString(), ".prove.eth");
-        ensNode = keccak256(bytes(ensName));
+        ensNode = agentEnsNode(agentId);
         require(agents[ensNode].addr == address(0), "already registered");
 
         agents[ensNode] = Agent({
-            ensNode: ensNode, addr: agentAddress, ensName: ensName, totalTasks: 0, passedTasks: 0, failedTasks: 0
+            ensNode: ensNode,
+            addr: agentAddress,
+            ensName: string.concat("agent", agentId.toString(), ".prove.eth"),
+            totalTasks: 0,
+            passedTasks: 0,
+            failedTasks: 0
         });
 
         emit AgentRegistered(agentId, ensNode, agentAddress);
@@ -67,7 +94,8 @@ contract AgentRegistry is Ownable {
     // --- score updates ---
 
     /// @notice Record a task outcome for an agent. Called by VerificationOracle after
-    ///         it settles a task.
+    ///         it settles a task. Mirrors the updated trust score to ENS if a
+    ///         resolver is configured.
     function recordResult(bytes32 ensNode, bool passed) external {
         require(msg.sender == scoreUpdater, "only score updater");
         Agent storage agent = agents[ensNode];
@@ -81,6 +109,12 @@ contract AgentRegistry is Ownable {
         }
 
         emit ResultRecorded(ensNode, passed, agent.totalTasks, agent.passedTasks);
+
+        if (resolver != address(0)) {
+            uint256 percent = (agent.passedTasks * 100) / agent.totalTasks;
+            IENSTextResolver(resolver).setText(ensNode, "com.prove.trustScore", percent.toString());
+            IENSTextResolver(resolver).setText(ensNode, "com.prove.totalTasks", agent.totalTasks.toString());
+        }
     }
 
     // --- views ---
