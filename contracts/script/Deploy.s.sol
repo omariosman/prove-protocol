@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import {Script, console} from "forge-std/Script.sol";
 import {TaskRegistry} from "../src/TaskRegistry.sol";
 import {VerificationOracle} from "../src/VerificationOracle.sol";
+import {AgentRegistry} from "../src/AgentRegistry.sol";
 
 /// @notice Deploys the PROVE protocol contracts.
 ///   forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify
@@ -27,8 +28,15 @@ contract Deploy is Script {
 
         registry.setVerificationOracle(address(oracle));
 
-        // AgentRegistry (Task 1.4) added next, then:
-        // oracle.setAgentRegistry(address(agentRegistry));
+        AgentRegistry agentRegistry = new AgentRegistry();
+        console.log("AgentRegistry:", address(agentRegistry));
+
+        oracle.setAgentRegistry(address(agentRegistry));
+        agentRegistry.setScoreUpdater(address(oracle));
+
+        // Real ENSv2 agent subname registration (issues #4/#5) is a separate script
+        // (script/RegisterAgentENS.s.sol) - agentRegistry.registerAgent() is called
+        // per-agent there, not as part of this base deploy.
 
         vm.stopBroadcast();
     }

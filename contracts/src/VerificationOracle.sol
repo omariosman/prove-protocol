@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {TaskRegistry} from "./TaskRegistry.sol";
+import {IAgentRegistry} from "./IAgentRegistry.sol";
 
 /// @title VerificationOracle
 /// @notice Receives the pass/fail attestation for a task and settles it on
@@ -44,11 +45,11 @@ contract VerificationOracle is Ownable {
     ///        of the subgraph data it compared against).
     function postVerification(uint256 taskId, bool passed, bytes calldata attestation) external {
         require(msg.sender == creDON, "only CRE DON");
+        require(agentRegistry != address(0), "agentRegistry not set");
 
+        bytes32 agentENSNode = taskRegistry.getTask(taskId).agentENSNode;
         taskRegistry.completeTask(taskId, passed);
-
-        // TODO(Task 1.4): once AgentRegistry exists, update the agent's trust score
-        // here, e.g. IAgentRegistry(agentRegistry).recordResult(agentENSNode, passed).
+        IAgentRegistry(agentRegistry).recordResult(agentENSNode, passed);
 
         emit VerificationPosted(taskId, passed, attestation);
     }
