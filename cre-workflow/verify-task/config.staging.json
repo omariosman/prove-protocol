@@ -1,0 +1,5 @@
+{
+  "taskRegistryAddress": "0x97b2702a20375Ff7E0Db05460e512545c47BbEB1",
+  "chainSelectorName": "ethereum-testnet-sepolia",
+  "rpcUrl": "https://ethereum-sepolia-rpc.publicnode.com"
+}

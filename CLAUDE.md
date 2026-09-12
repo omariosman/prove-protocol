@@ -100,7 +100,7 @@ Monorepo, independent packages:
     - Demo agent wallet (freshly generated for this run, funded with 0.003 ETH from the deployer): `0x79019E9fffFEf7188939874a512bb43e526e118D`.
     - Full real task lifecycle (task #1): requester (deployer) posted a 0.001 ETH task asking the agent to transfer 0.0002 ETH back to the requester; the agent actually performed that transfer (`0x51072cbc...`) and submitted its real tx hash as `resultHash`; the oracle then posted `passed=true` in one transaction (`0x5b801405...`) that atomically released the reward, updated `AgentRegistry`'s trust score, and wrote both ENS text records. All independently re-verified afterward with fresh `cast call`s (agent balance +0.001 ETH, task status `Paid`, `trustScore` = 1e18, resolver `text(...)` = `"100"`/`"1"`) — not just trusted from transaction logs.
     - No app-level changes in this task — deployment + wiring + a manual demo transaction sequence only (documented as exact `cast` commands, not a new script, since each step is a single simple call).
-- `cre-workflow/` — TypeScript CRE workflow (Task 2.2), verifies directly via RPC, no Graph dependency — **current focus**
+- `cre-workflow/` — TypeScript CRE Confidential Workflow (Task 2.2, issue [#12](https://github.com/omariosman/prove-protocol/issues/12)) — **done**. `verify-task/workflow.ts` is a real `handlerInTee` workflow verifying PROVE tasks; see "Chainlink CRE integration notes" below for the full writeup. Real proof: `cre workflow simulate` run against the actual Task 1.5 `ResultSubmitted` event (tx `0xcf1fe430...`), output captured in `cre-workflow/simulation-output.log`. 8 passing unit tests for the pure verification logic (`bun test`).
 - `agent/` — Node.js/ethers executor script (Task 2.3)
 - `frontend/` — React + wagmi + viem + ensjs (Task 3.1)
 - `subgraph/` — The Graph, **deprioritized to a stretch goal** (see scope decision above) — not created yet
@@ -130,6 +130,19 @@ ENSv2 is beta, live on Sepolia, source at `ensdomains/contracts-v2` on GitHub (a
 - `ETHRegistrar` on Sepolia: `MIN_COMMITMENT_AGE = 60s`, `MAX_COMMITMENT_AGE = 86400s`, `MIN_REGISTER_DURATION = 2419200s` (28 days) — all read live, immutable, could differ if redeployed.
 - Role constants used (`RegistryRolesLib`/`PermissionedResolverLib`): `ROLE_REGISTRAR = 1<<0`, `ROLE_RENEW = 1<<16`, `ROLE_SET_RESOLVER = 1<<24`, `ROLE_SET_TEXT = 1<<4` — each role's admin variant is `role << 128`.
 
+## Chainlink CRE integration notes
+
+CRE CLI installed at `~/.cre/bin/cre` (v1.33.0, GPG-verified via the official `smartcontractkit/cre-cli` installer), Bun at `~/.bun/bin/bun` (v1.4.2). Logged in via `cre login` (interactive browser flow — the user has to do this themselves; `cre whoami` confirms). Deploy access is **not enabled** (no Early Access enrollment) — irrelevant here, since we only simulate.
+
+**Reference material**: the official `smartcontractkit/chainlink-agent-skills` "chainlink-cre-skill" is installed at `.agents/skills/chainlink-cre-skill/` (via `npx skills add smartcontractkit/chainlink-agent-skills --skill chainlink-cre-skill`) and symlinked for Claude Code. Treat it as the source of truth over web search/docs summaries for CRE CLI flags, SDK APIs, and project structure — read the relevant `references/*.md` file before writing or running CRE commands, per its own progressive-disclosure routing in `SKILL.md`.
+
+- **Chainlink prize qualification explicitly accepts CRE CLI simulation as sufficient evidence** — no live TEE deployment needed (that requires private-beta enrollment via the Chainlink account team, separate from standard CRE deploy access). Full qualification checklist mapped to our implementation is in `cre-workflow/README.md`.
+- **Decision (confirmed with user, issue #12 "Option 1")**: the workflow's pass/fail verdict is applied on-chain via a plain script calling `VerificationOracle.postVerification` — the same `creDON`-gated mechanism already live from Task 1.5. **Not** Chainlink's own signed-report + `KeystoneForwarder` + `IReceiver` mechanism, which `VerificationOracle` doesn't implement and which isn't required by the qualification criteria. Real Sepolia `KeystoneForwarder`: `0xF8344CFd5c43616a4366C34E3EEE75af79a74482` (only relevant if this decision is revisited).
+- **Installed SDK version matters** — `@chainlink/cre-sdk` 1.18.0 (what `cre init` pulled) has a lower-level API than some docs/skill examples show: there's no separate `EVMLogCapability` class — the log trigger is a method on `EVMClient` itself (`evmClient.logTrigger(logTriggerConfig({ addresses, topics }))`), and `EVMClient` also has direct `getTransactionByHash`/`getTransactionReceipt` methods (unused here — see below). Always check `node_modules/@chainlink/cre-sdk/dist/**/*.d.ts` against what a doc/skill example shows before trusting the example verbatim.
+- **Chain reads are DON-only, never in-enclave** — `EVMClient.callContract`/`getTransactionReceipt`/etc. all take a plain `Runtime`, not `TeeRuntime`. To read confidential-relevant data (the agent's actual transaction) *from inside* the enclave, this workflow uses `HTTPClient().sendRequest(teeRuntime, ...)` with a raw JSON-RPC POST body instead of `EVMClient`'s native tx-read methods — `HTTPClient` has a real `TeeRuntime` overload, `EVMClient` does not.
+- **Simulating an EVM log trigger against real chain state**: `--evm-tx-hash <tx> --evm-event-index <n>` points the simulator at an actual past transaction's log — we used Task 1.5's real `ResultSubmitted` (tx `0xcf1fe430c68e04be346b13f12ded69404fb750d3550c0bb220ce91a9f740da32`), so the CRE simulation evidence is grounded in already-verified Sepolia state, not synthetic data. Always pass `--target`, `--non-interactive`, `--trigger-index 0` for a scriptable, single-handler run.
+- Full details, the qualification-to-code mapping, and the captured simulation log: `cre-workflow/README.md` and `cre-workflow/simulation-output.log`.
+
 ## Commands
 
 **contracts/** (run from `contracts/`):
@@ -142,8 +155,17 @@ cp .env.example .env                         # then fill PRIVATE_KEY, SEPOLIA_RP
 forge script script/Deploy.s.sol --rpc-url sepolia --broadcast --verify
 ```
 
+**cre-workflow/** (run from `cre-workflow/`, tools on PATH: `export PATH="$HOME/.cre/bin:$HOME/.bun/bin:$PATH"`):
+```bash
+cd verify-task && bun install && bunx cre-setup && cd ..   # one-time setup
+cd verify-task && bunx tsc --noEmit && bun test && cd ..    # typecheck + unit tests
+cre workflow simulate verify-task --target staging-settings \
+  --non-interactive --trigger-index 0 \
+  --evm-tx-hash <tx-with-a-ResultSubmitted-log> --evm-event-index 0
+```
+
 Other packages: standard `npm install` + package `scripts` once they exist.
 
 ## Priority Order (if short on time)
 
-**Updated 2026-09-12.** ~~TaskRegistry + VerificationOracle~~ → ~~AgentRegistry/ENSv2~~ → **CRE workflow (direct RPC verification, current focus)** → agent script → frontend → subgraph (stretch, only if time remains). Always reserve time for the demo video — required for the Chainlink + ENS prize tracks.
+**Updated 2026-09-12.** ~~TaskRegistry + VerificationOracle~~ → ~~AgentRegistry/ENSv2~~ → ~~CRE workflow~~ → **agent script (current focus)** → frontend → subgraph (stretch, only if time remains). Always reserve time for the demo video — required for the Chainlink + ENS prize tracks.
