@@ -82,19 +82,25 @@ Monorepo, independent packages:
     - Total cost: ~0.001 ETH gas across all 3 phases (no real funds — payment was free-minted `MockUSDC`).
     - `script/output/ens-deployment.sepolia.json` (committed) holds the subregistry/resolver addresses for reuse in #5.
     - `foundry.toml` gained `fs_permissions` for `./script/output` (needed for the script to read/write that file).
-  - **Task 1.4c not started** (issue [#5](https://github.com/omariosman/prove-protocol/issues/5)): wire `AgentRegistry.recordResult` to write real text records via the resolver above, and swap `registerAgent`'s placeholder `ensNode` for the real namehash. See "ENSv2 integration notes" below.
+  - **Task 1.4c done** (branch `task-1.4c-agent-registry-ens-writeback`, issue [#5](https://github.com/omariosman/prove-protocol/issues/5), epic [#6](https://github.com/omariosman/prove-protocol/issues/6)): `AgentRegistry` now writes real ENSv2 text records, proven against a **Sepolia fork** (`test/AgentRegistryENSFork.t.sol`, 3 tests exercising the actual deployed resolver bytecode from #4). Notes:
+    - `registerAgent` no longer uses a placeholder key — `ensNode` is now the real ENS namehash of `agent<N>.prove.eth` (`AgentRegistry.agentEnsNode(agentId)`, a `public pure` helper, self-computed via the standard recursive namehash algorithm, no external calls needed). Cross-verified against `cast namehash "agent1.prove.eth"`.
+    - New `resolver` address (owner-settable via `setResolver`, default `address(0)`). If unset, `recordResult` behaves exactly as before (ENS mirroring is opt-in, not required) — this is what keeps the plain `AgentRegistry.t.sol`/`VerificationOracle.t.sol` unit tests fork-free and fast.
+    - If `resolver` is set, `recordResult` also calls `IENSTextResolver(resolver).setText(...)` for both `com.prove.trustScore` (integer percent, 0-100) and `com.prove.totalTasks`, **after** updating its own storage, in the same transaction — so a revert there (e.g. missing role grant) reverts the whole call, keeping ENS and internal state consistent.
+    - For this to work, `AgentRegistry` needs `ROLE_SET_TEXT` on the resolver's `ROOT_RESOURCE`, granted once by whoever holds `ROLE_SET_TEXT_ADMIN` there (the deployer, from #4's `deployInfra`). Not yet done for a real, deployed `AgentRegistry` on Sepolia — `AgentRegistry` itself hasn't been broadcast-deployed yet (only exercised in tests/fork). The fork test grants this role by impersonating the real deployer (`vm.prank`), proving the mechanism works; an actual Sepolia deployment + role grant is future work (candidate for the eventual "deploy full protocol to Sepolia" task).
+    - New `src/IENSTextResolver.sol` — minimal `setText`/`text` interface, reused by `AgentRegistry` and the fork test.
 - `subgraph/` — The Graph (not created yet, Task 2.1)
 - `cre-workflow/` — TypeScript CRE workflow (Task 2.2)
 - `agent/` — Node.js/ethers executor script (Task 2.3)
 - `frontend/` — React + wagmi + viem + ensjs (Task 3.1)
 
-## ENSv2 integration notes (for Task 1.4b/1.4c)
+## ENSv2 integration notes
 
 ENSv2 is beta, live on Sepolia, source at `ensdomains/contracts-v2` on GitHub (actively pushed to as of Sep 2026 — check for drift before relying on old notes here). **Verified 2026-09-12** by pulling deployment JSON + contract source directly via `gh api` (raw bytes, not a summarized fetch) — a prior attempt using a page-summarizing web fetch returned fabricated contract addresses. Don't trust ENSv2 addresses/interfaces from a summarized source; get them from `contracts/deployments/sepolia/*.json` or contract source in that repo, or a live on-chain read.
 
 - Registration is priced only in stablecoins (no ETH/oracle path) — on Sepolia that's `MockUSDC`/`MockDAI`, both freely mintable via `mint(address,uint256)` (no access control). No real funds needed.
 - Access control is **Enhanced Access Control (EAC)**: bitmap-packed roles scoped per-resource (`uint256 resource`, e.g. a namehash or `resource(node, part)` for a specific text-record key), not OpenZeppelin's flat `AccessControl`. Roles are granted via `grantRoles(resource, roleBitmap, account)`; `ROLE_REGISTRAR`/`ROLE_SET_TEXT`/etc. are defined in `RegistryRolesLib`/`PermissionedResolverLib`.
 - To mint a subname you need a `PermissionedRegistry` you control (deployed via `VerifiableFactory`) set as the parent name's subregistry — `prove.eth` needs one deployed before subnames can be minted under it.
+- **Testing against ENSv2 means forking Sepolia**, not mocking — its access-control model is too specific to fake meaningfully. Pattern (see `test/AgentRegistryENSFork.t.sol`): `vm.createSelectFork(vm.envString("SEPOLIA_RPC_URL"))` in `setUp`, then `vm.prank(<real address that holds the role on real Sepolia>)` to exercise real permission grants. Requires `SEPOLIA_RPC_URL` in `.env`.
 - Verified Sepolia addresses (subject to redeploys — re-verify against the source above if anything reverts unexpectedly):
 
   | Contract | Address |
