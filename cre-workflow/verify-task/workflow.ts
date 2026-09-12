@@ -206,11 +206,6 @@ export const onResultSubmitted = (runtime: TeeRuntime<Config>, log: EVMLog): str
 		})
 		.result()
 
-	// The signed report is a normal CRE report at this point. Delivering it
-	// on-chain would go through evmClient.writeReport(reportRuntime, report)
-	// to a receiver implementing Chainlink's IReceiver/KeystoneForwarder
-	// interface - out of scope here; see CLAUDE.md for why (VerificationOracle
-	// uses a simpler trusted-address gate instead, per issue #12's Option 1).
 	return `Task ${taskId}: ${passed ? 'PASSED' : 'FAILED'} (${reason})`
 }
 
@@ -224,7 +219,6 @@ export function initWorkflow(config: Config) {
 
 	return [
 		// ── Register a TEE handler for TaskRegistry's ResultSubmitted event.
-		// AWS Nitro in us-west-2 is currently the only registered TEE type/region.
 		cre.handlerInTee(
 			evmClient.logTrigger(
 				logTriggerConfig({
