@@ -32,11 +32,11 @@ End-to-end flow, and why each piece exists:
 
 1. Requester calls `TaskRegistry.createTask(agentENSNode, taskSpec, reward)` and deposits ETH/ERC20. Task specs are simple JSON (`{"type":"transfer","token":"ETH","amount":"0.01","to":"0x..","deadline":..}`).
 2. An off-chain agent script watches `TaskCreated`, executes the on-chain action, then calls `TaskRegistry.submitResult(taskId, resultHash)`.
-3. `ResultSubmitted` triggers a **Chainlink CRE Confidential Workflow** (TEE). It reads the task spec on-chain, queries **The Graph subgraph** for what the agent actually did, compares spec vs. reality, and produces a pass/fail attestation.
+3. `ResultSubmitted` triggers a **Chainlink CRE Confidential Workflow** (TEE). It reads the task spec on-chain and verifies the agent's action directly via RPC (checks the `resultHash` tx receipt/logs against the spec), then produces a pass/fail attestation.
 4. The CRE DON calls `VerificationOracle.postVerification(taskId, passed, attestation)`. Pass → `TaskRegistry` releases reward + `AgentRegistry` bumps trust score. Fail → refund requester + penalize score.
 5. Trust score / task counts live as ENSv2 text records (`com.prove.trustScore`, `com.prove.totalTasks`) on the agent's subname (`agent1.prove.eth` under `prove.eth`).
 
-The Graph is the **verification data source**, not a cosmetic index — the CRE workflow depends on it. It's a judged prize criterion; keep it central.
+**Scope decision (2026-09-12): The Graph is deprioritized**, stretch goal only if time remains. CRE verifies directly via RPC instead of querying a subgraph — functionally equivalent for the task types in scope, and avoids subgraph indexing lag mid-demo. See `PROVE-hackathon-plan.md`'s "Scope update" note for the full reasoning. Don't reintroduce a Graph dependency into the CRE workflow's critical path without discussing it first.
 
 ## Architecture Constraints
 
@@ -100,10 +100,10 @@ Monorepo, independent packages:
     - Demo agent wallet (freshly generated for this run, funded with 0.003 ETH from the deployer): `0x79019E9fffFEf7188939874a512bb43e526e118D`.
     - Full real task lifecycle (task #1): requester (deployer) posted a 0.001 ETH task asking the agent to transfer 0.0002 ETH back to the requester; the agent actually performed that transfer (`0x51072cbc...`) and submitted its real tx hash as `resultHash`; the oracle then posted `passed=true` in one transaction (`0x5b801405...`) that atomically released the reward, updated `AgentRegistry`'s trust score, and wrote both ENS text records. All independently re-verified afterward with fresh `cast call`s (agent balance +0.001 ETH, task status `Paid`, `trustScore` = 1e18, resolver `text(...)` = `"100"`/`"1"`) — not just trusted from transaction logs.
     - No app-level changes in this task — deployment + wiring + a manual demo transaction sequence only (documented as exact `cast` commands, not a new script, since each step is a single simple call).
-- `subgraph/` — The Graph (not created yet, Task 2.1)
-- `cre-workflow/` — TypeScript CRE workflow (Task 2.2)
+- `cre-workflow/` — TypeScript CRE workflow (Task 2.2), verifies directly via RPC, no Graph dependency — **current focus**
 - `agent/` — Node.js/ethers executor script (Task 2.3)
 - `frontend/` — React + wagmi + viem + ensjs (Task 3.1)
+- `subgraph/` — The Graph, **deprioritized to a stretch goal** (see scope decision above) — not created yet
 
 ## ENSv2 integration notes
 
@@ -146,4 +146,4 @@ Other packages: standard `npm install` + package `scripts` once they exist.
 
 ## Priority Order (if short on time)
 
-TaskRegistry + VerificationOracle → subgraph → AgentRegistry/ENSv2 → CRE workflow (simulation OK) → agent script → frontend. Always reserve time for the demo video — required for all three prize tracks.
+**Updated 2026-09-12.** ~~TaskRegistry + VerificationOracle~~ → ~~AgentRegistry/ENSv2~~ → **CRE workflow (direct RPC verification, current focus)** → agent script → frontend → subgraph (stretch, only if time remains). Always reserve time for the demo video — required for the Chainlink + ENS prize tracks.
