@@ -11,7 +11,6 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 ///         once the agent subname is actually minted on Sepolia (see issues #4/#5).
 ///         This contract works standalone either way - it's the source of truth for
 ///         trust score regardless of whether the ENS mirror is wired up.
-/// @dev Hackathon proof-of-concept. Not production-hardened.
 contract AgentRegistry is Ownable {
     using Strings for uint256;
 
